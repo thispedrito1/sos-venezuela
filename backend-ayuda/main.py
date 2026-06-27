@@ -177,6 +177,18 @@ def inicializar_datos(db: Session):
                 ))
         db.commit()
 
+# ⚠️ TEMPORAL: Borrado de base de datos para inyectar la data limpia
+@app.on_event("startup")
+def on_startup():
+    # Eliminar todas las tablas viejas
+    Base.metadata.drop_all(bind=engine)
+    # Crear tablas desde cero
+    Base.metadata.create_all(bind=engine)
+    
+    db = SessionLocal()
+    inicializar_datos(db)
+    db.close()
+
 @app.on_event("startup")
 def on_startup():
     db = SessionLocal()
