@@ -71,10 +71,11 @@ app = FastAPI(title="API Ayuda Venezuela - Terremoto 2026")
 
 # CORS configurado correctamente para permitir POST y PUT desde Vercel
 app.add_middleware(
-    CORSMiddleware, 
+    CORSMiddleware,
     allow_origins=["*"], 
+    allow_credentials=False,  # <--- Esta es la clave del éxito
     allow_methods=["*"], 
-    allow_headers=["*"]
+    allow_headers=["*"], 
 )
 
 def get_db():
