@@ -54,7 +54,7 @@ class PuntoMapaBase(BaseModel):
     insumos: List[InsumoBase] = []
     class Config: from_attributes = True
 
-# --- NUEVOS Modelos Pydantic (Para recibir datos del frontend) ---
+# Modelos Pydantic (Para recibir datos del frontend)
 class PuntoCrear(BaseModel):
     nombre: str
     tipo: str
@@ -62,18 +62,18 @@ class PuntoCrear(BaseModel):
     longitud: float
     direccion: Optional[str] = None
     referencias: Optional[str] = None
+    necesidades_texto: Optional[str] = None
 
 class ActualizarEstado(BaseModel):
     nuevo_estado: str
-# ------------------------------------------------------------------
 
 app = FastAPI(title="API Ayuda Venezuela - Terremoto 2026")
 
-# CORS configurado correctamente para permitir POST y PUT desde Vercel
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
-    allow_credentials=False,  # <--- Esta es la clave del éxito
+    allow_credentials=False,
     allow_methods=["*"], 
     allow_headers=["*"], 
 )
@@ -86,12 +86,10 @@ def get_db():
 def inicializar_datos(db: Session):
     if db.query(DBPuntoMapa).first() is None:
         puntos_reales = [
-            # Caracas
             {"nombre": "Edificio Petunia", "tipo": "derrumbe", "latitud": 10.498, "longitud": -66.848, "dir": "Altamira", "ref": "Aplasta 5 vehículos, daños graves."},
             {"nombre": "Edificio Juvenal", "tipo": "derrumbe", "latitud": 10.499, "longitud": -66.849, "dir": "Altamira", "ref": "Labores de búsqueda bajo escombros."},
             {"nombre": "Edificio uso mixto (diag. Migas)", "tipo": "derrumbe", "latitud": 10.500, "longitud": -66.850, "dir": "Plaza Altamira", "ref": "Colapso total de la estructura."},
             {"nombre": "Sede Bancaribe", "tipo": "derrumbe", "latitud": 10.490, "longitud": -66.850, "dir": "Caracas", "ref": "Aprox. 50% de la infraestructura colapsada."},
-            # La Guaira
             {"nombre": "Hotel Eduard's", "tipo": "derrumbe", "latitud": 10.600, "longitud": -66.930, "dir": "Playa Grande", "ref": "Reducido a escombros, solo primer piso en pie."},
             {"nombre": "Ritasol Palace", "tipo": "derrumbe", "latitud": 10.601, "longitud": -66.931, "dir": "Playa Grande", "ref": "Estructura colapsada."},
             {"nombre": "Contraloría del Estado", "tipo": "derrumbe", "latitud": 10.598, "longitud": -66.928, "dir": "La Guaira", "ref": "Daños severos en fachada y estructura."},
@@ -104,7 +102,6 @@ def inicializar_datos(db: Session):
                                direccion=p["dir"], referencias=p["ref"], verificado_oficial=True)
             db.add(nuevo)
             db.commit()
-            # Insumos críticos iniciales
             for i in ["Herramientas de Rescate", "Agua Potable", "Personal Médico"]:
                 db.add(DBInsumo(id=str(uuid.uuid4()), punto_id=nuevo.id, nombre=i, estado="ROJO"))
         db.commit()
@@ -115,38 +112,38 @@ def on_startup():
     inicializar_datos(db)
     db.close()
 
-# 1. RUTA PARA LEER LOS PUNTOS (La que ya tenías)
 @app.get("/api/puntos", response_model=List[PuntoMapaBase])
 def obtener_puntos(db: Session = Depends(get_db)):
     return db.query(DBPuntoMapa).all()
 
-# 2. NUEVA RUTA PARA GUARDAR UN NUEVO PUNTO (Resuelve el error 405 del formulario)
-@app.post("/api/puntos/")
+# ✅ RUTA CORREGIDA (Sin barra final)
+@app.post("/api/puntos")
 def crear_punto(punto: PuntoCrear, db: Session = Depends(get_db)):
     nuevo_id = str(uuid.uuid4())
     nuevo_punto = DBPuntoMapa(
-        id=nuevo_id,
-        nombre=punto.nombre,
-        tipo=punto.tipo,
-        latitud=punto.latitud,
-        longitud=punto.longitud,
-        direccion=punto.direccion,
-        referencias=punto.referencias,
-        verificado_oficial=False # Los reportes ciudadanos entran como NO oficiales al principio
+        id=nuevo_id, nombre=punto.nombre, tipo=punto.tipo,
+        latitud=punto.latitud, longitud=punto.longitud,
+        direccion=punto.direccion, referencias=punto.referencias,
+        verificado_oficial=False 
     )
     db.add(nuevo_punto)
     db.commit()
     
-    # Añadir insumos base automáticamente a los nuevos reportes
-    insumos_basicos = ["Agua Potable", "Comida", "Insumos Médicos"]
-    for i in insumos_basicos:
-        db.add(DBInsumo(id=str(uuid.uuid4()), punto_id=nuevo_id, nombre=i, estado="AMARILLO"))
+    insumos_a_crear = []
+    if punto.necesidades_texto:
+        texto_limpio = punto.necesidades_texto.replace(" y ", ",").replace(" e ", ",")
+        insumos_a_crear = [i.strip().capitalize() for i in texto_limpio.split(",") if i.strip()]
+    
+    if not insumos_a_crear:
+        insumos_a_crear = ["Agua Potable", "Comida", "Insumos Médicos"]
+
+    for i in insumos_a_crear:
+        db.add(DBInsumo(id=str(uuid.uuid4()), punto_id=nuevo_id, nombre=i, estado="ROJO"))
     
     db.commit()
     db.refresh(nuevo_punto)
     return nuevo_punto
 
-# 3. NUEVA RUTA PARA ACTUALIZAR LOS COLORES DE LOS INSUMOS
 @app.put("/api/puntos/{punto_id}/insumos/{insumo_id}")
 def actualizar_insumo(punto_id: str, insumo_id: str, estado_data: ActualizarEstado, db: Session = Depends(get_db)):
     insumo = db.query(DBInsumo).filter(DBInsumo.id == insumo_id, DBInsumo.punto_id == punto_id).first()
@@ -156,3 +153,14 @@ def actualizar_insumo(punto_id: str, insumo_id: str, estado_data: ActualizarEsta
     insumo.estado = estado_data.nuevo_estado
     db.commit()
     return {"mensaje": "Estado actualizado correctamente"}
+
+# ✅ NUEVA RUTA PARA ELIMINAR
+@app.delete("/api/puntos/{punto_id}")
+def eliminar_punto(punto_id: str, db: Session = Depends(get_db)):
+    punto = db.query(DBPuntoMapa).filter(DBPuntoMapa.id == punto_id).first()
+    if not punto:
+        raise HTTPException(status_code=404, detail="Punto no encontrado")
+    
+    db.delete(punto)
+    db.commit()
+    return {"mensaje": "Punto eliminado correctamente"}

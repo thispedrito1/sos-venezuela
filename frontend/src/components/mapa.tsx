@@ -6,7 +6,6 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapPin, X, Navigation } from 'lucide-react';
 
-// URL fija hacia Render para asegurar la conexión directa desde producción
 const API_URL = 'https://sos-venezuela-api.onrender.com';
 
 interface Insumo { id: string; nombre: string; estado: string; }
@@ -33,6 +32,7 @@ export default function Mapa() {
   const [nuevoTipo, setNuevoTipo] = useState('derrumbe');
   const [nuevaDireccion, setNuevaDireccion] = useState('');
   const [nuevasReferencias, setNuevasReferencias] = useState('');
+  const [necesidadesTexto, setNecesidadesTexto] = useState('');
   const [cargandoGPS, setCargandoGPS] = useState(false);
 
   const cargarPuntos = async () => {
@@ -51,6 +51,14 @@ export default function Mapa() {
       });
       cargarPuntos();
     } catch (error) { console.error('Error al actualizar estado:', error); }
+  };
+
+  const eliminarPunto = async (id: string) => {
+    if (!window.confirm("¿Estás seguro de que deseas eliminar este punto del mapa?")) return;
+    try {
+      await fetch(`${API_URL}/api/puntos/${id}`, { method: 'DELETE' });
+      cargarPuntos();
+    } catch (error) { console.error('Error al eliminar punto:', error); }
   };
 
   const abrirModalManual = () => {
@@ -82,16 +90,18 @@ export default function Mapa() {
     if (!nuevaLat || !nuevaLng) return;
 
     try {
-      await fetch(`${API_URL}/api/puntos/`, {
+      // ✅ RUTA CORREGIDA (Sin barra final)
+      await fetch(`${API_URL}/api/puntos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           nombre: nuevoNombre, tipo: nuevoTipo, latitud: nuevaLat, longitud: nuevaLng,
-          direccion: nuevaDireccion, referencias: nuevasReferencias 
+          direccion: nuevaDireccion, referencias: nuevasReferencias,
+          necesidades_texto: necesidadesTexto
         }),
       });
       setMostrarModal(false);
-      setNuevoNombre(''); setNuevaDireccion(''); setNuevasReferencias('');
+      setNuevoNombre(''); setNuevaDireccion(''); setNuevasReferencias(''); setNecesidadesTexto('');
       cargarPuntos(); 
     } catch (error) { console.error('Error al guardar nuevo punto:', error); }
   };
@@ -134,6 +144,15 @@ export default function Mapa() {
                     </div>
                   ))}
                 </div>
+                
+                {/* Botón de eliminar */}
+                <button 
+                  onClick={() => eliminarPunto(punto.id)} 
+                  className="w-full mt-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-1.5 rounded text-xs border border-red-200 transition-colors"
+                >
+                  🗑️ Eliminar este reporte
+                </button>
+
               </div>
             </Popup>
           </Marker>
@@ -185,7 +204,19 @@ export default function Mapa() {
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Referencias Adicionales para llegar</label>
-                <textarea rows={2} placeholder="Ej. Entrar por el callejón detrás de la panadería, calle bloqueada por escombros." value={nuevasReferencias} onChange={(e) => setNuevasReferencias(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea>
+                <textarea rows={2} placeholder="Ej. Entrar por el callejón detrás de la panadería..." value={nuevasReferencias} onChange={(e) => setNuevasReferencias(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea>
+              </div>
+
+              {/* ✅ NUEVO CAMPO DE LENGUAJE NATURAL */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">¿Qué hace falta? (Descríbelo)</label>
+                <textarea 
+                  rows={2} 
+                  placeholder="Ej. Hacen falta picos, palas, discos de corte y mano de obra" 
+                  value={necesidadesTexto} 
+                  onChange={(e) => setNecesidadesTexto(e.target.value)} 
+                  className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                ></textarea>
               </div>
 
               <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-md text-sm mt-2">
