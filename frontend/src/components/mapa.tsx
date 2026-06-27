@@ -6,7 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapPin, X, Navigation } from 'lucide-react';
 
-const API_URL = 'https://sos-venezuela-api.onrender.com';
+const API_URL = 'https://sos-venezuela.onrender.com';
 
 interface Insumo { id: string; nombre: string; estado: string; }
 interface PuntoMapa { id: string; nombre: string; tipo: string; latitud: number; longitud: number; direccion?: string; referencias?: string; verificado_oficial: boolean; insumos: Insumo[]; }
