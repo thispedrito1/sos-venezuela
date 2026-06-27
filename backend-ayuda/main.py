@@ -5,12 +5,23 @@ from typing import List, Optional
 from sqlalchemy import create_engine, Column, String, Float, Boolean, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, Session, relationship
 import uuid
+import os
 
-# Configuración de base de datos
-SQLALCHEMY_DATABASE_URL = "sqlite:///./ayuda_venezuela.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+# --- NUEVA CONFIGURACIÓN DE BASE DE DATOS (POSTGRESQL / SQLITE) ---
+# Obtenemos la URL de Render. Si no existe, usamos SQLite local.
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./ayuda_venezuela.db")
+
+# SQLAlchemy requiere que la URL empiece con postgresql:// en lugar de postgres://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# connect_args={"check_same_thread": False} solo se necesita para SQLite
+connect_args = {"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+# -------------------------------------------------------------------
 
 # Modelos ORM
 class DBPuntoMapa(Base):
@@ -116,7 +127,6 @@ def on_startup():
 def obtener_puntos(db: Session = Depends(get_db)):
     return db.query(DBPuntoMapa).all()
 
-# ✅ RUTA CORREGIDA (Sin barra final)
 @app.post("/api/puntos")
 def crear_punto(punto: PuntoCrear, db: Session = Depends(get_db)):
     nuevo_id = str(uuid.uuid4())
@@ -154,7 +164,6 @@ def actualizar_insumo(punto_id: str, insumo_id: str, estado_data: ActualizarEsta
     db.commit()
     return {"mensaje": "Estado actualizado correctamente"}
 
-# ✅ NUEVA RUTA PARA ELIMINAR
 @app.delete("/api/puntos/{punto_id}")
 def eliminar_punto(punto_id: str, db: Session = Depends(get_db)):
     punto = db.query(DBPuntoMapa).filter(DBPuntoMapa.id == punto_id).first()
