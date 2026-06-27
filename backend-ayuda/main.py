@@ -35,7 +35,7 @@ class DBInsumo(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# Modelos Pydantic
+# Modelos Pydantic (Para enviar datos al frontend)
 class InsumoBase(BaseModel):
     id: str
     nombre: str
@@ -54,8 +54,28 @@ class PuntoMapaBase(BaseModel):
     insumos: List[InsumoBase] = []
     class Config: from_attributes = True
 
+# --- NUEVOS Modelos Pydantic (Para recibir datos del frontend) ---
+class PuntoCrear(BaseModel):
+    nombre: str
+    tipo: str
+    latitud: float
+    longitud: float
+    direccion: Optional[str] = None
+    referencias: Optional[str] = None
+
+class ActualizarEstado(BaseModel):
+    nuevo_estado: str
+# ------------------------------------------------------------------
+
 app = FastAPI(title="API Ayuda Venezuela - Terremoto 2026")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+# CORS configurado correctamente para permitir POST y PUT desde Vercel
+app.add_middleware(
+    CORSMiddleware, 
+    allow_origins=["*"], 
+    allow_methods=["*"], 
+    allow_headers=["*"]
+)
 
 def get_db():
     db = SessionLocal()
@@ -94,6 +114,44 @@ def on_startup():
     inicializar_datos(db)
     db.close()
 
+# 1. RUTA PARA LEER LOS PUNTOS (La que ya tenías)
 @app.get("/api/puntos", response_model=List[PuntoMapaBase])
 def obtener_puntos(db: Session = Depends(get_db)):
     return db.query(DBPuntoMapa).all()
+
+# 2. NUEVA RUTA PARA GUARDAR UN NUEVO PUNTO (Resuelve el error 405 del formulario)
+@app.post("/api/puntos/")
+def crear_punto(punto: PuntoCrear, db: Session = Depends(get_db)):
+    nuevo_id = str(uuid.uuid4())
+    nuevo_punto = DBPuntoMapa(
+        id=nuevo_id,
+        nombre=punto.nombre,
+        tipo=punto.tipo,
+        latitud=punto.latitud,
+        longitud=punto.longitud,
+        direccion=punto.direccion,
+        referencias=punto.referencias,
+        verificado_oficial=False # Los reportes ciudadanos entran como NO oficiales al principio
+    )
+    db.add(nuevo_punto)
+    db.commit()
+    
+    # Añadir insumos base automáticamente a los nuevos reportes
+    insumos_basicos = ["Agua Potable", "Comida", "Insumos Médicos"]
+    for i in insumos_basicos:
+        db.add(DBInsumo(id=str(uuid.uuid4()), punto_id=nuevo_id, nombre=i, estado="AMARILLO"))
+    
+    db.commit()
+    db.refresh(nuevo_punto)
+    return nuevo_punto
+
+# 3. NUEVA RUTA PARA ACTUALIZAR LOS COLORES DE LOS INSUMOS
+@app.put("/api/puntos/{punto_id}/insumos/{insumo_id}")
+def actualizar_insumo(punto_id: str, insumo_id: str, estado_data: ActualizarEstado, db: Session = Depends(get_db)):
+    insumo = db.query(DBInsumo).filter(DBInsumo.id == insumo_id, DBInsumo.punto_id == punto_id).first()
+    if not insumo:
+        raise HTTPException(status_code=404, detail="Insumo no encontrado")
+    
+    insumo.estado = estado_data.nuevo_estado
+    db.commit()
+    return {"mensaje": "Estado actualizado correctamente"}
