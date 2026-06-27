@@ -95,26 +95,86 @@ def get_db():
     finally: db.close()
 
 def inicializar_datos(db: Session):
+    # Verificamos si la base de datos está vacía para no duplicar
     if db.query(DBPuntoMapa).first() is None:
         puntos_reales = [
-            {"nombre": "Edificio Petunia", "tipo": "derrumbe", "latitud": 10.498, "longitud": -66.848, "dir": "Altamira", "ref": "Aplasta 5 vehículos, daños graves."},
-            {"nombre": "Edificio Juvenal", "tipo": "derrumbe", "latitud": 10.499, "longitud": -66.849, "dir": "Altamira", "ref": "Labores de búsqueda bajo escombros."},
-            {"nombre": "Edificio uso mixto (diag. Migas)", "tipo": "derrumbe", "latitud": 10.500, "longitud": -66.850, "dir": "Plaza Altamira", "ref": "Colapso total de la estructura."},
-            {"nombre": "Sede Bancaribe", "tipo": "derrumbe", "latitud": 10.490, "longitud": -66.850, "dir": "Caracas", "ref": "Aprox. 50% de la infraestructura colapsada."},
-            {"nombre": "Hotel Eduard's", "tipo": "derrumbe", "latitud": 10.600, "longitud": -66.930, "dir": "Playa Grande", "ref": "Reducido a escombros, solo primer piso en pie."},
-            {"nombre": "Ritasol Palace", "tipo": "derrumbe", "latitud": 10.601, "longitud": -66.931, "dir": "Playa Grande", "ref": "Estructura colapsada."},
-            {"nombre": "Contraloría del Estado", "tipo": "derrumbe", "latitud": 10.598, "longitud": -66.928, "dir": "La Guaira", "ref": "Daños severos en fachada y estructura."},
-            {"nombre": "Zona Residencial Playa Grande", "tipo": "derrumbe", "latitud": 10.605, "longitud": -66.935, "dir": "Playa Grande", "ref": "Zona de desastre: +250 edificios afectados."}
+            {
+                "nombre": "Calle Páez - Centro de Maracay", "tipo": "derrumbe", "latitud": 10.2469, "longitud": -67.5958,
+                "dir": "Aragua", "ref": "Situación: Zona Segura, Sin Novedades",
+                "insumos": [{"nombre": "Sin requerimientos inmediatos", "estado": "VERDE"}]
+            },
+            {
+                "nombre": "Hospital Los Samanes - Sur de Maracay", "tipo": "hospital", "latitud": 10.2223, "longitud": -67.5852,
+                "dir": "Entregar a familiares de pacientes", "ref": "Atención de Heridos",
+                "insumos": [{"nombre": "Guantes", "estado": "ROJO"}, {"nombre": "Mascarillas", "estado": "ROJO"}]
+            },
+            {
+                "nombre": "Los Mangos - Centro de Maracay", "tipo": "derrumbe", "latitud": 10.2501, "longitud": -67.5950,
+                "dir": "Los Mangos", "ref": "Preguntar antes de preparar más comida",
+                "insumos": [{"nombre": "Hidratación (Agua, Jugos)", "estado": "ROJO"}, {"nombre": "Almuerzos", "estado": "VERDE"}]
+            },
+            {
+                "nombre": "Bosque Lindo - Turmero", "tipo": "derrumbe", "latitud": 10.2286, "longitud": -67.4755,
+                "dir": "Maracay San Vicente o Turmero", "ref": "Contacto: 0424-3684107",
+                "insumos": [{"nombre": "Cavas grandes", "estado": "ROJO"}, {"nombre": "Guantes de carnaza", "estado": "ROJO"}, {"nombre": "Linternas", "estado": "ROJO"}, {"nombre": "Picos y Mototrozadoras", "estado": "ROJO"}, {"nombre": "Comida e Hidratación", "estado": "VERDE"}]
+            },
+            {
+                "nombre": "Redoma del Mariscal - Cagua", "tipo": "acopio", "latitud": 10.1838, "longitud": -67.4582,
+                "dir": "Cagua (Redoma del Mariscal)", "ref": "Centro de Acopio. Contacto: 0414-9121686",
+                "insumos": [{"nombre": "Analgésicos y Antibióticos", "estado": "ROJO"}, {"nombre": "Pañales y Fórmulas", "estado": "ROJO"}, {"nombre": "Abrigos y Colchonetas", "estado": "ROJO"}]
+            },
+            {
+                "nombre": "Residencias Oram - Maracay", "tipo": "derrumbe", "latitud": 10.2450, "longitud": -67.5900,
+                "dir": "Residencias Oram", "ref": "Remoción de escombros. Contacto: 0424-3684107",
+                "insumos": [{"nombre": "Almuerzos", "estado": "VERDE"}]
+            },
+            {
+                "nombre": "Residencias Luis XV - Maracay", "tipo": "derrumbe", "latitud": 10.2480, "longitud": -67.5920,
+                "dir": "Residencias Luis XV", "ref": "Remoción de escombros",
+                "insumos": [{"nombre": "Abastecidos", "estado": "VERDE"}]
+            },
+            {
+                "nombre": "Residencias el Centro - Maracay Plaza", "tipo": "derrumbe", "latitud": 10.2400, "longitud": -67.5980,
+                "dir": "Residencias el Centro", "ref": "Punto: C.C. Maracay Plaza",
+                "insumos": [{"nombre": "Hidratación (Agua, Jugos)", "estado": "AMARILLO"}]
+            },
+            {
+                "nombre": "Urb. Andres Bello - Norte de Maracay", "tipo": "derrumbe", "latitud": 10.2700, "longitud": -67.5800,
+                "dir": "Urb. Andrés Bello", "ref": "Remoción de escombros",
+                "insumos": [{"nombre": "Hidratación (Agua fría)", "estado": "ROJO"}, {"nombre": "Almuerzos", "estado": "VERDE"}]
+            },
+            {
+                "nombre": "La Cooperativa, Sector Bella Vista", "tipo": "acopio", "latitud": 10.2650, "longitud": -67.5750,
+                "dir": "Calle 5 de Julio, Casa #03", "ref": "Contacto: 0412-1484881",
+                "insumos": [{"nombre": "Ropa de Bebé y Zapatos", "estado": "ROJO"}, {"nombre": "Higiene Personal", "estado": "ROJO"}, {"nombre": "Insumos Médicos", "estado": "ROJO"}]
+            },
+            {
+                "nombre": "Edificio Abitare, La Coromoto", "tipo": "derrumbe", "latitud": 10.2350, "longitud": -67.6100,
+                "dir": "Cercanías del Edificio Abitare", "ref": "Referencia: Supermercado Ali Fung. Contacto: 0424-3322445",
+                "insumos": [{"nombre": "Antihipertensivos", "estado": "ROJO"}, {"nombre": "Pañales de Adulto", "estado": "ROJO"}, {"nombre": "Complejo B y Analgésicos", "estado": "ROJO"}]
+            },
+            {
+                "nombre": "Morón (Sectores afectados)", "tipo": "derrumbe", "latitud": 10.4851, "longitud": -68.2000,
+                "dir": "Carabobo, Morón", "ref": "URGENTE. Damnificados. Sin servicios.",
+                "insumos": [{"nombre": "Agua Potable", "estado": "ROJO"}, {"nombre": "Insumos Médicos", "estado": "ROJO"}]
+            }
         ]
 
         for p in puntos_reales:
-            nuevo = DBPuntoMapa(id=str(uuid.uuid4()), nombre=p["nombre"], tipo=p["tipo"], 
-                               latitud=p["latitud"], longitud=p["longitud"], 
-                               direccion=p["dir"], referencias=p["ref"], verificado_oficial=True)
+            nuevo = DBPuntoMapa(
+                id=str(uuid.uuid4()), nombre=p["nombre"], tipo=p["tipo"], 
+                latitud=p["latitud"], longitud=p["longitud"], 
+                direccion=p["dir"], referencias=p["ref"], verificado_oficial=True
+            )
             db.add(nuevo)
             db.commit()
-            for i in ["Herramientas de Rescate", "Agua Potable", "Personal Médico"]:
-                db.add(DBInsumo(id=str(uuid.uuid4()), punto_id=nuevo.id, nombre=i, estado="ROJO"))
+            
+            # Inyectar los insumos específicos extraídos del Excel
+            for insumo in p["insumos"]:
+                db.add(DBInsumo(
+                    id=str(uuid.uuid4()), punto_id=nuevo.id, 
+                    nombre=insumo["nombre"], estado=insumo["estado"]
+                ))
         db.commit()
 
 @app.on_event("startup")
