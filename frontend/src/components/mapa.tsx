@@ -178,51 +178,73 @@ export default function Mapa() {
             </div>
             
             <form onSubmit={guardarNuevoPunto} className="p-4 space-y-4 overflow-y-auto">
-              <button type="button" onClick={intentarGPS} disabled={cargandoGPS} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-xs transition-colors">
-                <Navigation className={`h-4 w-4 ${cargandoGPS ? 'animate-spin text-blue-500' : ''}`} />
-                {cargandoGPS ? 'Buscando satélites...' : 'Usar sensor GPS del teléfono (Opcional)'}
-              </button>
+  <button type="button" onClick={intentarGPS} disabled={cargandoGPS} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-xs transition-colors">
+    <Navigation className={`h-4 w-4 ${cargandoGPS ? 'animate-spin text-blue-500' : ''}`} />
+    {cargandoGPS ? 'Buscando satélites...' : 'Usar sensor GPS del teléfono (Opcional)'}
+  </button>
 
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Tipo de Emergencia</label>
-                <select value={nuevoTipo} onChange={(e) => setNuevoTipo(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
-                  <option value="derrumbe">⚠️ Derrumbe / Estructura Dañada</option>
-                  <option value="acopio">📦 Centro de Acopio</option>
-                  <option value="hospital">🏥 Atención Médica</option>
-                </select>
-              </div>
+  <div>
+    <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Tipo de Emergencia</label>
+    <select 
+      value={nuevoTipo} 
+      onChange={(e) => setNuevoTipo(e.target.value)} 
+      className="w-full border border-slate-300 rounded-lg p-2 text-sm text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+    >
+      <option value="derrumbe">⚠️ Derrumbe / Estructura Dañada</option>
+      <option value="acopio">📦 Centro de Acopio</option>
+      <option value="hospital">🏥 Atención Médica</option>
+    </select>
+  </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Título (Ej. Edificio Las Palmas)</label>
-                <input type="text" required value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-              </div>
+  <div>
+    <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Título (Ej. Edificio Las Palmas)</label>
+    <input 
+      type="text" 
+      required 
+      value={nuevoNombre} 
+      onChange={(e) => setNuevoNombre(e.target.value)} 
+      className="w-full border border-slate-300 rounded-lg p-2 text-sm text-slate-900 placeholder-slate-400 bg-white focus:ring-2 focus:ring-blue-500 outline-none" 
+    />
+  </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Dirección (Calle, Av, Sector)</label>
-                <input type="text" required placeholder="Ej. Av. Principal, Urb. La Carlota" value={nuevaDireccion} onChange={(e) => setNuevaDireccion(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-              </div>
+  <div>
+    <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Dirección (Calle, Av, Sector)</label>
+    <input 
+      type="text" 
+      required 
+      placeholder="Ej. Av. Principal, Urb. La Carlota" 
+      value={nuevaDireccion} 
+      onChange={(e) => setNuevaDireccion(e.target.value)} 
+      className="w-full border border-slate-300 rounded-lg p-2 text-sm text-slate-900 placeholder-slate-400 bg-white focus:ring-2 focus:ring-blue-500 outline-none" 
+    />
+  </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Referencias Adicionales para llegar</label>
-                <textarea rows={2} placeholder="Ej. Entrar por el callejón detrás de la panadería..." value={nuevasReferencias} onChange={(e) => setNuevasReferencias(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea>
-              </div>
+  <div>
+    <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Referencias Adicionales para llegar</label>
+    <textarea 
+      rows={2} 
+      placeholder="Ej. Entrar por el callejón detrás de la panadería..." 
+      value={nuevasReferencias} 
+      onChange={(e) => setNuevasReferencias(e.target.value)} 
+      className="w-full border border-slate-300 rounded-lg p-2 text-sm text-slate-900 placeholder-slate-400 bg-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+    ></textarea>
+  </div>
 
-              {/* ✅ NUEVO CAMPO DE LENGUAJE NATURAL */}
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">¿Qué hace falta? (Descríbelo)</label>
-                <textarea 
-                  rows={2} 
-                  placeholder="Ej. Hacen falta picos, palas, discos de corte y mano de obra" 
-                  value={necesidadesTexto} 
-                  onChange={(e) => setNecesidadesTexto(e.target.value)} 
-                  className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                ></textarea>
-              </div>
+  <div>
+    <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">¿Qué hace falta? (Descríbelo)</label>
+    <textarea 
+      rows={2} 
+      placeholder="Ej. Hacen falta picos, palas, discos de corte y mano de obra" 
+      value={necesidadesTexto} 
+      onChange={(e) => setNecesidadesTexto(e.target.value)} 
+      className="w-full border border-slate-300 rounded-lg p-2 text-sm text-slate-900 placeholder-slate-400 bg-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+    ></textarea>
+  </div>
 
-              <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-md text-sm mt-2">
-                Publicar Emergencia
-              </button>
-            </form>
+  <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-md text-sm mt-2">
+    Publicar Emergencia
+  </button>
+</form>
           </div>
         </div>
       )}
