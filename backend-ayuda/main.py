@@ -134,7 +134,12 @@ def inicializar_datos(db: Session):
 
 @app.on_event("startup")
 def on_startup():
+    # 1. ESTO BORRA LAS TABLAS VIEJAS EN RENDER
+    Base.metadata.drop_all(bind=engine)
+    
+    # 2. ESTO CREA LAS TABLAS NUEVAS (ya con el teléfono)
     Base.metadata.create_all(bind=engine)
+    
     db = SessionLocal()
     inicializar_datos(db)
     db.close()
