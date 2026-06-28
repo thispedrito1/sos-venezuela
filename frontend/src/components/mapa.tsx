@@ -99,12 +99,12 @@ const ContenidoPopup = ({ punto, actualizarEstado, eliminarPunto, agregarInsumoE
           <div key={insumo.id} className="flex flex-col gap-1 bg-slate-50 p-1.5 rounded border border-slate-200">
             <div className="flex justify-between items-start">
               <span className="text-[11px] font-bold text-slate-700">{insumo.nombre}</span>
-              <button onClick={() => eliminarInsumoExistente(punto.id, insumo.id)} className="text-slate-400 hover:text-red-500 p-0.5"><X className="h-3 w-3" /></button>
+              <button onClick={() => eliminarInsumoExistente(punto.id, insumo.id)} className="text-slate-400 hover:text-red-500 p-0.5" title="Eliminar esta necesidad"><X className="h-3 w-3" /></button>
             </div>
             <div className="flex w-full gap-1">
-              <button onClick={() => actualizarEstado(punto.id, insumo.id, 'ROJO')} className={`flex-1 text-[9px] font-bold py-1 rounded ${insumo.estado === 'ROJO' ? 'bg-red-500 text-white' : 'bg-slate-200 text-slate-500'}`}>FALTA</button>
-              <button onClick={() => actualizarEstado(punto.id, insumo.id, 'AMARILLO')} className={`flex-1 text-[9px] font-bold py-1 rounded ${insumo.estado === 'AMARILLO' ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-500'}`}>POCO</button>
-              <button onClick={() => actualizarEstado(punto.id, insumo.id, 'VERDE')} className={`flex-1 text-[9px] font-bold py-1 rounded ${insumo.estado === 'VERDE' ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'}`}>HAY</button>
+              <button onClick={() => actualizarEstado(punto.id, insumo.id, 'ROJO')} className={`flex-1 text-[9px] font-bold py-1 rounded transition-colors ${insumo.estado === 'ROJO' ? 'bg-red-500 text-white' : 'bg-slate-200 text-slate-500'}`}>FALTA</button>
+              <button onClick={() => actualizarEstado(punto.id, insumo.id, 'AMARILLO')} className={`flex-1 text-[9px] font-bold py-1 rounded transition-colors ${insumo.estado === 'AMARILLO' ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-500'}`}>POCO</button>
+              <button onClick={() => actualizarEstado(punto.id, insumo.id, 'VERDE')} className={`flex-1 text-[9px] font-bold py-1 rounded transition-colors ${insumo.estado === 'VERDE' ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'}`}>HAY</button>
             </div>
           </div>
         ))}
@@ -117,7 +117,7 @@ const ContenidoPopup = ({ punto, actualizarEstado, eliminarPunto, agregarInsumoE
           {CATEGORIAS_INSUMOS.map((cat: string) => <option key={cat} value={cat}>{cat}</option>)}
         </select>
         <div className="flex gap-1">
-          <input type="text" placeholder="Especificar necesidad" value={insumoEspecifico} onChange={(e) => setInsumumoEspecifico(e.target.value)} className="flex-1 border border-slate-300 rounded p-1 text-[10px] outline-none text-slate-800" />
+          <input type="text" placeholder="Ej. Talla M..." value={insumoEspecifico} onChange={(e) => setInsumumoEspecifico(e.target.value)} className="flex-1 border border-slate-300 rounded p-1 text-[10px] outline-none text-slate-800" />
           <button onClick={handleAgregar} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-[10px] font-bold transition-colors">Añadir</button>
         </div>
       </div>
@@ -144,7 +144,7 @@ export default function Mapa() {
   const [nuevoTipo, setNuevoTipo] = useState('derrumbe');
   const [nuevaDireccion, setNuevaDireccion] = useState('');
   const [nuevasReferencias, setNuevasReferencias] = useState('');
-  const [nuevoTelefono, setNuevoTelefono] = useState(''); // <--- NUEVO ESTADO
+  const [nuevoTelefono, setNuevoTelefono] = useState('');
   
   const [cargandoGPS, setCargandoGPS] = useState(false);
 
@@ -161,11 +161,30 @@ export default function Mapa() {
 
   useEffect(() => { cargarPuntos(); }, []);
 
+  // OPTIMIZACIÓN: Actualización de estado en tiempo real
   const actualizarEstado = async (puntoId: string, insumoId: string, nuevoEstado: string) => {
+    // 1. Cambiamos el color de inmediato en la pantalla 
+    setPuntos(prevPuntos => prevPuntos.map(p => {
+      if (p.id !== puntoId) return p;
+      return {
+        ...p,
+        insumos: p.insumos.map(i => i.id === insumoId ? { ...i, estado: nuevoEstado } : i)
+      };
+    }));
+
+    // 2. Enviamos la información al servidor silenciosamente
     try {
-      await fetch(`${API_URL}/api/puntos/${puntoId}/insumos/${insumoId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nuevo_estado: nuevoEstado }) });
-      cargarPuntos();
-    } catch (error) { console.error('Error al actualizar estado:', error); }
+      const res = await fetch(`${API_URL}/api/puntos/${puntoId}/insumos/${insumoId}`, { 
+        method: 'PUT', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ nuevo_estado: nuevoEstado }) 
+      });
+      if (!res.ok) throw new Error("Fallo en red");
+    } catch (error) { 
+      console.error('Error de red al actualizar estado:', error);
+      alert("Conexión inestable. Intentaremos recargar la información.");
+      cargarPuntos(); // Si falla, recargamos para no mostrar información falsa
+    }
   };
 
   const agregarInsumoExistente = async (puntoId: string, nombreInsumo: string) => {
@@ -183,7 +202,6 @@ export default function Mapa() {
     } catch (error) { console.error('Error al eliminar insumo:', error); }
   };
 
-  // NUEVA FUNCIÓN PARA EDITAR INFO PRINCIPAL
   const editarInfoPunto = async (puntoId: string, datosEditados: any) => {
     try {
       await fetch(`${API_URL}/api/puntos/${puntoId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datosEditados) });
@@ -244,7 +262,7 @@ export default function Mapa() {
           longitud: nuevaLng,
           direccion: nuevaDireccion, 
           referencias: nuevasReferencias,
-          telefono: nuevoTelefono, // <--- ENVIAMOS EL TELÉFONO
+          telefono: nuevoTelefono, 
           insumos_lista: insumosAgregados 
         }),
       });
@@ -261,7 +279,18 @@ export default function Mapa() {
         <div className="w-4 h-4 rounded-full border-2 border-slate-900 bg-white/50 shadow"></div>
       </div>
 
-      <MapContainer center={[10.4900, -67.6000]} zoom={9} scrollWheelZoom={true} className="w-full h-full z-0" ref={mapRef}>
+      {/* OPTIMIZACIÓN: Límites de zoom y animaciones desactivadas para ahorrar datos */}
+      <MapContainer 
+        center={[10.4900, -67.6000]} 
+        zoom={10} 
+        minZoom={8} 
+        maxZoom={15} 
+        scrollWheelZoom={true} 
+        fadeAnimation={false}
+        markerZoomAnimation={false}
+        className="w-full h-full z-0 bg-[#E5E3DF]" 
+        ref={mapRef}
+      >
         <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         
         {puntos.map((punto) => (
@@ -273,7 +302,7 @@ export default function Mapa() {
                 eliminarPunto={eliminarPunto} 
                 agregarInsumoExistente={agregarInsumoExistente}
                 eliminarInsumoExistente={eliminarInsumoExistente}
-                editarInfoPunto={editarInfoPunto} // <--- PASAMOS LA FUNCIÓN
+                editarInfoPunto={editarInfoPunto} 
                 CATEGORIAS_INSUMOS={CATEGORIAS_INSUMOS}
               />
             </Popup>
@@ -281,6 +310,7 @@ export default function Mapa() {
         ))}
       </MapContainer>
 
+  
       <div className="absolute bottom-28 sm:bottom-8 right-0 left-0 flex justify-center z-[1000] pointer-events-none pb-[env(safe-area-inset-bottom)]">
         <button onClick={abrirModalManual} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-2 transition-transform active:scale-95 pointer-events-auto">
           <MapPin className="h-5 w-5" />
@@ -313,30 +343,30 @@ export default function Mapa() {
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Título / Nombre</label>
-                  <input type="text" required value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none" />
+                  <input type="text" required value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none text-slate-800" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Dirección</label>
-                  <input type="text" required value={nuevaDireccion} onChange={(e) => setNuevaDireccion(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none" />
+                  <input type="text" required value={nuevaDireccion} onChange={(e) => setNuevaDireccion(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none text-slate-800" />
                 </div>
                 <div className="col-span-1">
                   <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Teléfono (Opcional)</label>
-                  <input type="text" placeholder="Ej. 0414..." value={nuevoTelefono} onChange={(e) => setNuevoTelefono(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none" />
+                  <input type="text" placeholder="Ej. 0414..." value={nuevoTelefono} onChange={(e) => setNuevoTelefono(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none text-slate-800" />
                 </div>
                 <div className="col-span-1">
                   <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Referencias extra</label>
-                  <input type="text" placeholder="Cerca de..." value={nuevasReferencias} onChange={(e) => setNuevasReferencias(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none" />
+                  <input type="text" placeholder="Cerca de..." value={nuevasReferencias} onChange={(e) => setNuevasReferencias(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none text-slate-800" />
                 </div>
               </div>
 
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
                 <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase">¿Qué hace falta? (Añade a la lista)</label>
                 <div className="space-y-2 mb-3">
-                  <select value={catSeleccionada} onChange={(e) => setCatSeleccionada(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white outline-none">
+                  <select value={catSeleccionada} onChange={(e) => setCatSeleccionada(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white outline-none text-slate-800">
                     {CATEGORIAS_INSUMOS.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
                   <div className="flex gap-2">
-                    <input type="text" placeholder="Ej. Picos y palas..." value={insumoEspecifico} onChange={(e) => setInsumumoEspecifico(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarInsumoALaLista(); } }} className="flex-1 border border-slate-300 rounded-lg p-2 text-xs outline-none" />
+                    <input type="text" placeholder="Ej. Picos y palas..." value={insumoEspecifico} onChange={(e) => setInsumumoEspecifico(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarInsumoALaLista(); } }} className="flex-1 border border-slate-300 rounded-lg p-2 text-xs outline-none text-slate-800" />
                     <button type="button" onClick={agregarInsumoALaLista} className="bg-slate-800 text-white font-bold px-3 py-2 rounded-lg text-xs">Añadir</button>
                   </div>
                 </div>
