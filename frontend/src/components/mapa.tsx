@@ -24,7 +24,7 @@ const obtenerIconoPorTipo = (tipo: string) => {
 const CATEGORIAS_INSUMOS = [
   "Insumos médicos", "Hidratación y Comida", "Herramientas de trabajo", 
   "Mano de obra", "Maquinaria Pesada", "Colchones y sábanas", 
-  "Ropa (Adultos/Niños)", "Artículos de Aseo Personal"
+  "Ropa (Adultos/Niños)", "Artículos de Aseo Personal", "Otros (Especificar en referencias)"
 ];
 
 // --- COMPONENTE PARA EL POPUP DEL MAPA ---
@@ -151,6 +151,54 @@ export default function Mapa() {
   const [catSeleccionada, setCatSeleccionada] = useState(CATEGORIAS_INSUMOS[0]);
   const [insumoEspecifico, setInsumumoEspecifico] = useState('');
   const [insumosAgregados, setInsumosAgregados] = useState<string[]>([]);
+  const [sugerenciasDir, setSugerenciasDir] = useState<any[]>([]);
+  const [buscandoDir, setBuscandoDir] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const buscarDireccionInteligente = (texto: string) => {
+  setNuevaDireccion(texto);
+
+  // Si borra el texto, limpiamos las sugerencias
+  if (!texto.trim() || texto.length < 4) {
+    setSugerenciasDir([]);
+    return;
+  }
+
+  // Debounce: Espera a que el usuario deje de escribir por 500ms antes de buscar (ahorra megas)
+  if (timerRef.current) clearTimeout(timerRef.current);
+
+  timerRef.current = setTimeout(async () => {
+    setBuscandoDir(true);
+    try {
+      // Limitamos la búsqueda prioritariamente a Venezuela para que sea más inteligente
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(texto)}&countrycodes=ve&limit=5&addressdetails=1`;
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'SOS-Venezuela-Emergency-App' } // Requerido por OpenStreetMap
+      });
+      const datos = await res.json();
+      setSugerenciasDir(datos);
+    } catch (error) {
+      console.error("Error buscando dirección:", error);
+    } finally {
+      setBuscandoDir(false);
+    }
+  }, 500);
+};
+
+const seleccionarSugerencia = (sug: any) => {
+  const lat = parseFloat(sug.lat);
+  const lon = parseFloat(sug.lon);
+  
+  setNuevaLat(lat);
+  setNuevaLng(lon);
+  setNuevaDireccion(sug.display_name.split(',')[0] + ', ' + (sug.address.suburb || sug.address.city || '')); // Simplifica el nombre
+  setSugerenciasDir([]); // Cierra la lista de sugerencias
+
+  // Mueve el mapa inteligentemente hacia la dirección seleccionada
+  if (mapRef.current) {
+    mapRef.current.setView([lat, lon], 15); // Zoom cercano para que verifiquen el punto
+  }
+};
 
   const cargarPuntos = async () => {
     try {
@@ -341,10 +389,34 @@ export default function Mapa() {
                     <option value="hospital">🏥 Atención Médica</option>
                   </select>
                 </div>
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Título / Nombre</label>
-                  <input type="text" required value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none text-slate-800" />
-                </div>
+                <div className="col-span-2 relative">
+  <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Dirección (Escribe y selecciona)</label>
+  <input 
+    type="text" 
+    required 
+    value={nuevaDireccion} 
+    onChange={(e) => buscarDireccionInteligente(e.target.value)} 
+    placeholder="Ej: Avenida bolivar, chacao"
+    className="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none text-slate-800 focus:ring-2 focus:ring-blue-500 bg-white" 
+  />
+  {buscandoDir && <span className="absolute right-3 top-8 text-[10px] text-blue-500 animate-pulse">Buscando...</span>}
+  
+  {/* Lista flotante de sugerencias inteligentes */}
+  {sugerenciasDir.length > 0 && (
+    <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-[3000] max-h-48 overflow-y-auto">
+      {sugerenciasDir.map((sug, index) => (
+        <button
+          key={index}
+          type="button"
+          onClick={() => seleccionarSugerencia(sug)}
+          className="w-full text-left p-2 text-xs text-slate-700 hover:bg-slate-100 border-b border-slate-100 last:border-0 block truncate"
+        >
+          📍 {sug.display_name}
+        </button>
+      ))}
+    </div>
+  )}
+</div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Dirección</label>
                   <input type="text" required value={nuevaDireccion} onChange={(e) => setNuevaDireccion(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none text-slate-800" />
@@ -354,7 +426,7 @@ export default function Mapa() {
                   <input type="text" placeholder="Ej. 0414..." value={nuevoTelefono} onChange={(e) => setNuevoTelefono(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none text-slate-800" />
                 </div>
                 <div className="col-span-1">
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Referencias extra</label>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase">Referencias dirección</label>
                   <input type="text" placeholder="Cerca de..." value={nuevasReferencias} onChange={(e) => setNuevasReferencias(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none text-slate-800" />
                 </div>
               </div>
